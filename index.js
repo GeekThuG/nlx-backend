@@ -5,9 +5,6 @@ const cors = require("cors");
 require("dotenv").config();
 const app = express();
 const routes = express.Router();
-const FarmerModel = require("./models/farmer");
-const SellerModel = require("./models/seller");
-const { MongoClient } = require("mongodb");
 const nodemailer = require("nodemailer");
 app.use("/api", routes);
 
@@ -19,122 +16,13 @@ const jsonParser = bodyParser.json();
 //cors
 routes.use(cors());
 
-// Function connect DB
-async function connectToMongoDB() {
-  const uri = `${process.env.SECRET_MONGO}`;
-  const client = new MongoClient(uri);
-
-  try {
-    await client.connect();
-    console.log("Connected to MongoDB");
-    return client;
-  } catch (err) {
-    console.error("Error connecting to MongoDB: ", err);
-    throw err;
-  }
-}
-
-// ------- producers ------------ //
-// Add producer
-routes.post("/add-producer/:id", jsonParser, async (req, res) => {
-  try {
-    // connect MongoDB
-    let client = await connectToMongoDB();
-
-    const formData = req.body;
-    const id = req.params.id;
-
-    // Select database and collection
-    const database = client.db("farmers");
-    const collection = database.collection(`farmer_${id}`);
-
-    const newFarmer = new FarmerModel(formData);
-
-    // Insert data collection
-    const result = await collection.insertOne(newFarmer.toObject());
-
-    console.log("Document inserted successfully:", result);
-    res.status(200).json(result);
-  } catch (err) {
-    console.error("Error processing request: ", err);
-    res.status(500).send("Error processing request");
-  }
-});
-
-// Get all producers
-routes.get("/list-producers/:id", async (req, res) => {
-  try {
-    // connect MongoDB
-    let client = await connectToMongoDB();
-
-    const id = req.params.id;
-
-    // Select the database and collection associated with this ID
-    const database = client.db("farmers");
-    const collection = database.collection(`farmer_${id}`);
-
-    // Utilisez la méthode find pour récupérer tous les agriculteurs
-    const farmers = await collection.find({}).toArray();
-
-    res.status(200).json(farmers);
-  } catch (err) {
-    console.error("Erreur lors du traitement de la demande : ", err);
-    res.status(500).send("Erreur lors du traitement de la demande");
-  }
-});
-
-// ------- sellers ------------ //
-routes.post("/add-seller/:id", jsonParser, async (req, res) => {
-  try {
-    // connect MongoDB
-    let client = await connectToMongoDB();
-
-    const formData = req.body;
-    const id = req.params.id;
-
-    // Select database and collection
-    const database = client.db("sellers");
-    const collection = database.collection(`seller_${id}`);
-
-    const newSeller = new SellerModel(formData);
-
-    // Insert data collection
-    const result = await collection.insertOne(newSeller.toObject());
-
-    console.log("Document inserted successfully:", result);
-    res.status(200).json(result);
-  } catch (err) {
-    console.error("Error processing request: ", err);
-    res.status(500).send("Error processing request");
-  }
-});
-
-routes.get("/list-sellers/:id", async (req, res) => {
-  try {
-    // connect MongoDB
-    let client = await connectToMongoDB();
-
-    const id = req.params.id;
-
-    // Select the database and collection associated with this ID
-    const database = client.db("sellers");
-    const collection = database.collection(`seller_${id}`);
-
-    // Utilisez la méthode find pour récupérer tous les agriculteurs
-    const sellers = await collection.find({}).toArray();
-
-    res.status(200).json(sellers);
-  } catch (err) {
-    console.error("Erreur lors du traitement de la demande : ", err);
-    res.status(500).send("Erreur lors du traitement de la demande");
-  }
-});
-
-// send email via the contact form
+// send an email via the contact form
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.zoho.com",
+  port: 465,
+  secure: true,
   auth: {
-    user: process.env.MAIL,
+    user: process.env.LOGIN,
     pass: process.env.PASSWORD,
   },
 });
@@ -143,8 +31,9 @@ routes.post("/contact", jsonParser, (req, res) => {
   const { name, email, message } = req.body;
 
   const mailOptions = {
-    from: email,
-    to: process.env.MAIL,
+    from: process.env.LOGIN,
+    replyTo: email,
+    to: process.env.LOGIN,
     subject: `Demande d'information pour ${name}`,
     text: message,
   };
